@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from src.analytics.classifier import classify_storm_level
+from src.analytics.classifier import classify_g_scale_from_kp, classify_storm_level
 from src.analytics.coupling import calculate_clock_angle, calculate_coupling
 
 
@@ -67,3 +67,20 @@ def test_coupling_matches_hand_derivation_for_dawnward_field():
 )
 def test_classify_storm_level_tiers(bz, speed, coupling, expected):
     assert classify_storm_level(bz, speed, coupling) == expected
+
+
+@pytest.mark.parametrize(
+    "kp,expected",
+    [
+        (9.0, "G5 (Extreme)"),
+        (8.0, "G4 (Severe)"),
+        (8.67, "G4 (Severe)"),  # NOAA groups 9- into G4 too
+        (7.0, "G3 (Strong)"),
+        (6.0, "G2 (Moderate)"),
+        (5.0, "G1 (Minor)"),
+        (4.99, "G0 (Nominal)"),
+        (1.33, "G0 (Nominal)"),
+    ],
+)
+def test_classify_g_scale_from_kp_matches_noaas_official_thresholds(kp, expected):
+    assert classify_g_scale_from_kp(kp) == expected

@@ -9,6 +9,14 @@
     const label = document.getElementById("conn-label");
     const banner = document.getElementById("storm-banner");
 
+    const kpInfoBtn = document.getElementById("kp-info-btn");
+    const kpInfoText = document.getElementById("kp-info-text");
+    kpInfoBtn.addEventListener("click", () => {
+        const expanded = kpInfoBtn.getAttribute("aria-expanded") === "true";
+        kpInfoBtn.setAttribute("aria-expanded", String(!expanded));
+        kpInfoText.hidden = expanded;
+    });
+
     function setConnected(connected) {
         dot.classList.toggle("live", connected);
         label.textContent = connected ? "Live" : "Reconnecting";
@@ -43,6 +51,16 @@
         document.getElementById("storm-tier").textContent = record.storm_tier;
         const tierClass = record.storm_tier.split(" ")[0].toLowerCase();
         banner.className = tierClass;
+
+        const officialTierEl = document.getElementById("official-tier");
+        const kpDetailEl = document.getElementById("kp-detail");
+        if (typeof record.official_kp === "number") {
+            officialTierEl.textContent = record.official_g_scale;
+            kpDetailEl.textContent = `Kp ${fmt(record.official_kp, 2)} (updated ~3-hourly)`;
+        } else {
+            officialTierEl.textContent = "--";
+            kpDetailEl.textContent = "Awaiting NOAA Kp data";
+        }
 
         const ts = new Date(record.timestamp);
         document.getElementById("last-update").textContent = ts.toISOString().substring(11, 19) + "Z";

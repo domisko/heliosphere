@@ -6,6 +6,7 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+dump.rdb
 data/*.duckdb
 data/*.duckdb.wal
 data/*.parquet

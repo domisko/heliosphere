@@ -6,11 +6,11 @@ import httpx
 from pydantic import ValidationError
 
 from src.config import settings
-from src.models import RawMagRecord, RawWindRecord
+from src.models import RawKpRecord, RawMagRecord, RawWindRecord
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T", RawWindRecord, RawMagRecord)
+T = TypeVar("T", RawWindRecord, RawMagRecord, RawKpRecord)
 
 
 class NOAAClient:
@@ -57,12 +57,18 @@ class NOAAClient:
     async def fetch_wind_and_mag(self) -> tuple[list[RawWindRecord], list[RawMagRecord]]:
         return await asyncio.gather(self.fetch_wind(), self.fetch_mag())
 
+    async def fetch_kp(self) -> list[RawKpRecord]:
+        raw = await self._get_json(settings.noaa_kp_url)
+        return _parse_records(raw, RawKpRecord)
+
 
 def _parse_records(raw: list[dict], model: type[T]) -> list[T]:
     """Parse rows and keep only NOAA's currently active source per minute.
 
-    Each feed carries redundant rows from multiple L1 spacecraft (ACE, IMAP,
-    DSCOVR) for the same minute; only the row flagged `active` is authoritative.
+    The wind/mag feeds carry redundant rows from multiple L1 spacecraft
+    (ACE, IMAP, DSCOVR) for the same minute; only the row flagged `active` is
+    authoritative. The Kp feed has no such redundancy (no `active` field),
+    so it passes through unfiltered.
     """
     records: list[T] = []
     for row in raw:
@@ -71,6 +77,6 @@ def _parse_records(raw: list[dict], model: type[T]) -> list[T]:
         except ValidationError as exc:
             logger.debug("Skipping malformed %s row: %s", model.__name__, exc)
             continue
-        if record.active:
+        if getattr(record, "active", True):
             records.append(record)
     return records

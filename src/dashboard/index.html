@@ -17,14 +17,20 @@
 
     <div id="storm-banner" class="g0">
         <div>
-            <div class="label">Geomagnetic Storm Tier</div>
+            <div class="label">Live Estimate (Heuristic)</div>
             <div class="tier" id="storm-tier">G0 (Nominal)</div>
+        </div>
+        <div id="official-kp-block">
+            <div class="label">NOAA Official (Kp Index) <button type="button" class="info-btn" id="kp-info-btn" aria-expanded="false" title="NOAA's authoritative G-scale, from ground magnetometers, updated every 3 hours.">?</button></div>
+            <div class="tier" id="official-tier">--</div>
+            <div class="kp-detail" id="kp-detail">Kp -- (updated ~3-hourly)</div>
         </div>
         <div style="text-align:right">
             <div class="label">Last Update (UTC)</div>
             <div id="last-update" class="tier" style="font-size:14px">--:--:--</div>
         </div>
     </div>
+    <p class="info-text" id="kp-info-text" hidden>NOAA's official G-scale, computed from the planetary Kp index (a 3-hourly measurement from a global ground-magnetometer network). It's authoritative but lags the live heuristic on the left, which reacts to solar wind data within a minute. See <a href="#explainer-storm-tier">Storm Tier</a> below.</p>
 
     <div class="grid">
         <div class="panel">
@@ -82,14 +88,14 @@
             <p>This tracks how fast Bz has moved over the trailing 15 minutes. A sharp negative swing (Bz dropping quickly) often precedes the rapid "main phase" onset of a storm, ahead of what the instantaneous Bz value alone would suggest — it's an early-warning signal, not a severity measure.</p>
         </div>
 
-        <div class="panel">
-            <h3>Storm Tier — How It Differs From NOAA's Official G-Scale</h3>
-            <p>NOAA's official G-scale (G1 Minor through G5 Extreme) is derived from the <strong>Kp index</strong>, a 3-hourly measurement computed from a global network of ground magnetometers — it's authoritative but arrives with real lag. The tier shown here is a <em>solar-wind-driven heuristic</em>: it estimates likely severity in near real time from Bz, speed, and the Newell coupling index, using the same physics that eventually shows up in Kp. Treat it as an early, approximate read — not a substitute for NOAA's official Kp-based G-scale.</p>
+        <div class="panel" id="explainer-storm-tier">
+            <h3>Storm Tier — Live Heuristic vs. NOAA's Official G-Scale</h3>
+            <p>The banner at the top shows both, side by side, pulled from NOAA's own feeds in real time. <strong>NOAA Official</strong> is the authoritative G-scale, derived from the <strong>Kp index</strong> — a 3-hourly measurement computed from a global network of ground magnetometers — so it only updates a few times a day. <strong>Live Estimate</strong> is a <em>solar-wind-driven heuristic</em>: it approximates likely severity every minute from Bz, speed, and the Newell coupling index, using the same physics that eventually shows up in Kp. When they disagree, trust NOAA Official; the heuristic exists to give you a same-minute early read while you wait for it.</p>
             <p class="source">Source: <a href="https://www.swpc.noaa.gov/noaa-scales-explanation" target="_blank" rel="noopener">NOAA — Space Weather Scales</a> (G1=Kp5 … G5=Kp9)</p>
         </div>
     </section>
 
-    <footer>NOAA SWPC Real-Time Solar Wind (ACE / DSCOVR / SOLAR-1 / IMAP) &middot; Data refreshes every 60s</footer>
+    <footer>NOAA SWPC Real-Time Solar Wind (ACE / DSCOVR / SOLAR-1 / IMAP) + Planetary K-Index &middot; Data refreshes every 60s</footer>
 
     <script src="/static/js/glossary.js"></script>
     <script src="/static/js/compass.js"></script>

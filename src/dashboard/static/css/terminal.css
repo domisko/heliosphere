@@ -78,10 +78,12 @@ header h1 span {
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
     background: var(--panel);
     transition: background 0.4s ease, border-color 0.4s ease;
 }
@@ -92,11 +94,33 @@ header h1 span {
     letter-spacing: 0.05em;
 }
 
+#official-kp-block .tier {
+    font-size: 16px;
+    color: var(--text);
+}
+
 #storm-banner .label {
     font-size: 11px;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
+}
+
+#official-kp-block .label .info-btn {
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 0 2px;
+    font-size: 11px;
+}
+
+.kp-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+#kp-info-text {
+    margin: 0 0 16px 0;
 }
 
 #storm-banner.g0 { border-color: var(--border); }

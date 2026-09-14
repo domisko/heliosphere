@@ -42,6 +42,13 @@ async def lifespan(app: FastAPI):
         redis_client=app.state.redis_client,
         on_update=broadcast,
     )
+
+    try:
+        backfilled = await app.state.poller.backfill()
+        logger.info("Backfilled %d historical records from NOAA's rolling feed window", backfilled)
+    except Exception:
+        logger.exception("Startup backfill failed; continuing with live polling only")
+
     app.state.poller_task = asyncio.create_task(app.state.poller.run_forever())
 
     yield

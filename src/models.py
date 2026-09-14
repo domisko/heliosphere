@@ -28,6 +28,18 @@ class RawMagRecord(BaseModel):
     bt: float | None = Field(None, description="Total magnetic field strength (nT)")
 
 
+class RawKpRecord(BaseModel):
+    """One 3-hourly planetary K-index reading from NOAA's official record,
+    computed from a global ground-magnetometer network. This is the basis of
+    NOAA's authoritative G-scale, independent of Heliosphere's own real-time
+    solar-wind-driven heuristic."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    time_tag: datetime
+    kp: float = Field(validation_alias="Kp")
+
+
 class EnrichedTelemetry(BaseModel):
     timestamp: datetime
     speed: float
@@ -41,3 +53,5 @@ class EnrichedTelemetry(BaseModel):
     coupling_index: float
     storm_tier: str
     bz_derivative_15m: float
+    official_kp: float | None = None
+    official_g_scale: str | None = None

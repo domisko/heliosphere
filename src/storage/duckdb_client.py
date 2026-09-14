@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS telemetry (
     clock_angle DOUBLE,
     coupling_index DOUBLE,
     storm_tier VARCHAR,
-    bz_derivative_15m DOUBLE
+    bz_derivative_15m DOUBLE,
+    official_kp DOUBLE,
+    official_g_scale VARCHAR
 )
 """
 
@@ -34,6 +36,11 @@ class DuckDBClient:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect(str(path))
         self._conn.execute(_SCHEMA)
+        # ADD COLUMN IF NOT EXISTS lets a pre-existing on-disk file (from
+        # before official_kp/official_g_scale were added) pick up the new
+        # columns without a full migration step.
+        self._conn.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS official_kp DOUBLE")
+        self._conn.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS official_g_scale VARCHAR")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_date ON telemetry(date)")
 
     async def insert_record(self, record: EnrichedTelemetry) -> None:
@@ -41,7 +48,7 @@ class DuckDBClient:
 
     def _insert_sync(self, record: EnrichedTelemetry) -> None:
         self._conn.execute(
-            "INSERT OR REPLACE INTO telemetry VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO telemetry VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 record.timestamp,
                 record.timestamp.date(),
@@ -56,6 +63,8 @@ class DuckDBClient:
                 record.coupling_index,
                 record.storm_tier,
                 record.bz_derivative_15m,
+                record.official_kp,
+                record.official_g_scale,
             ],
         )
 

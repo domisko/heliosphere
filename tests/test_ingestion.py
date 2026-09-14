@@ -6,8 +6,8 @@ import respx
 
 from src.config import settings
 from src.ingestion.client import NOAAClient
-from src.ingestion.poller import join_latest
-from src.models import RawMagRecord, RawWindRecord
+from src.ingestion.poller import join_all, join_latest
+from src.models import RawKpRecord, RawMagRecord, RawWindRecord
 
 T0 = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
 T1 = datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc)
@@ -157,3 +157,44 @@ async def test_fetch_wind_keeps_only_the_noaa_flagged_active_source():
 
     assert len(records) == 1
     assert records[0].speed == 400.0
+
+
+def test_raw_kp_record_maps_noaas_capitalized_kp_field():
+    # NOAA's planetary K-index feed uses the JSON key "Kp" (capital K).
+    record = RawKpRecord.model_validate({"time_tag": "2026-09-07T00:00:00", "Kp": 6.33})
+    assert record.kp == 6.33
+
+
+async def test_fetch_kp_parses_the_live_feed_shape():
+    payload = [{"time_tag": "2026-09-07T00:00:00", "Kp": 1.33, "a_running": 5, "station_count": 8}]
+
+    with respx.mock:
+        respx.get(settings.noaa_kp_url).mock(return_value=httpx.Response(200, json=payload))
+        client = NOAAClient()
+        try:
+            records = await client.fetch_kp()
+        finally:
+            await client.aclose()
+
+    assert len(records) == 1
+    assert records[0].kp == 1.33
+
+
+def test_join_all_returns_every_complete_minute_oldest_first():
+    t2 = datetime(2026, 1, 1, 0, 2, tzinfo=timezone.utc)
+    wind = [
+        RawWindRecord(time_tag=t2, speed=420.0, density=5.0, temperature=1e5),
+        RawWindRecord(time_tag=T0, speed=400.0, density=5.0, temperature=1e5),
+        RawWindRecord(time_tag=T1, speed=None, density=5.0, temperature=1e5),  # incomplete, excluded
+    ]
+    mag = [
+        RawMagRecord(time_tag=t2, bx_gsm=1.0, by_gsm=2.0, bz_gsm=-7.0, bt=7.3),
+        RawMagRecord(time_tag=T0, bx_gsm=1.0, by_gsm=2.0, bz_gsm=-3.0, bt=3.5),
+        RawMagRecord(time_tag=T1, bx_gsm=1.0, by_gsm=2.0, bz_gsm=-5.0, bt=5.4),
+    ]
+
+    result = join_all(wind, mag)
+
+    assert [timestamp for timestamp, _ in result] == [T0, t2]
+    assert result[0][1]["bz"] == -3.0
+    assert result[1][1]["bz"] == -7.0

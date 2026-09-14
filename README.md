@@ -13,8 +13,14 @@ NOAA SWPC ──▶ Ingestion (httpx/Pydantic) ──▶ Analytics (Polars physi
   redundant rows per minute from multiple L1 spacecraft (ACE, DSCOVR,
   SOLAR-1, IMAP); Heliosphere keeps only the row NOAA flags `active`, and
   skips any minute where the two feeds don't have a matching, complete pair.
+- On startup, backfills DuckDB and Redis from the ~24h of history NOAA's own
+  feeds already return, so the dashboard has populated sparklines and history
+  immediately instead of waiting ~2 hours to fill up from a cold start.
 - Physics engine: IMF clock angle, Newell coupling function, 15-minute
-  Bz rate-of-change, and a NOAA G-scale-inspired storm classification.
+  Bz rate-of-change, and a real-time solar-wind-driven storm heuristic —
+  shown alongside NOAA's actual official G-scale (derived from the 3-hourly
+  Kp index), so the dashboard is honest about which one is the live estimate
+  and which is authoritative.
 - DuckDB for durable historical telemetry; Redis for the last two hours of
   rolling state.
 - FastAPI REST history endpoint plus a `/ws/live` WebSocket broadcasting
@@ -77,7 +83,7 @@ them directly.
 | --- | --- | --- |
 | `HELIOSPHERE_NOAA_WIND_URL` | NOAA `rtsw_wind_1m.json` | Solar wind plasma feed |
 | `HELIOSPHERE_NOAA_MAG_URL` | NOAA `rtsw_mag_1m.json` | IMF magnetic field feed |
-| `HELIOSPHERE_NOAA_KP_URL` | NOAA planetary K-index | Reserved for future use |
+| `HELIOSPHERE_NOAA_KP_URL` | NOAA planetary K-index | Official 3-hourly Kp feed, used to compute NOAA's real G-scale |
 | `HELIOSPHERE_POLL_INTERVAL_SECONDS` | `60.0` | How often to poll NOAA |
 | `HELIOSPHERE_HTTP_TIMEOUT_SECONDS` | `10.0` | Per-request HTTP timeout |
 | `HELIOSPHERE_MAX_RETRIES` | `4` | Retry attempts per NOAA fetch before giving up |
@@ -94,16 +100,19 @@ them directly.
 pytest -v --cov=src --cov-report=term-missing
 ```
 
-47 tests, ~89% statement coverage. All tests are self-contained — NOAA calls
+63 tests, ~89% statement coverage. All tests are self-contained — NOAA calls
 are mocked with `respx`, Redis is faked with `fakeredis`, and DuckDB runs
 against a temp file — so the suite needs no network access or running infra.
 
 What's covered: the physics functions (clock angle, coupling, storm
-classification) including boundary/edge cases; the ingest→join→enrich
-pipeline, including the "active source" filtering and field-name-aliasing
-bugs that only showed up against NOAA's real (undocumented) response shape;
-the rolling-window derivative math; DuckDB upsert/history-window semantics;
-the Redis rolling cache and trim behavior; the WebSocket connection manager
+classification, NOAA's official Kp→G-scale mapping) including boundary/edge
+cases; the ingest→join→enrich pipeline, including the "active source"
+filtering and field-name-aliasing bugs that only showed up against NOAA's
+real (undocumented) response shape; startup backfill (`join_all`) and its
+interaction with the live incremental path; the official-Kp lookup and its
+resilience when the Kp feed fails independently of wind/mag; the
+rolling-window derivative math; DuckDB upsert/history-window semantics; the
+Redis rolling cache and trim behavior; the WebSocket connection manager
 (broadcast, dead-connection cleanup); and the REST route handlers.
 
 What's intentionally not unit-tested: the FastAPI `lifespan` wiring in
