@@ -1,0 +1,22 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  heliosphere:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      HELIOSPHERE_REDIS_URL: redis://redis:6379/0
+      HELIOSPHERE_DUCKDB_PATH: /app/data/heliosphere.duckdb
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:

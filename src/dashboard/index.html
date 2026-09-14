@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heliosphere Mission Control</title>
+    <link rel="stylesheet" href="/static/css/terminal.css" />
+</head>
+<body>
+    <header>
+        <h1>Heliosphere <span>// Mission Control</span></h1>
+        <div id="conn-status">
+            <span class="dot" id="conn-dot"></span>
+            <span id="conn-label">Connecting</span>
+        </div>
+    </header>
+
+    <div id="storm-banner" class="g0">
+        <div>
+            <div class="label">Geomagnetic Storm Tier</div>
+            <div class="tier" id="storm-tier">G0 (Nominal)</div>
+        </div>
+        <div style="text-align:right">
+            <div class="label">Last Update (UTC)</div>
+            <div id="last-update" class="tier" style="font-size:14px">--:--:--</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>IMF Vector — By / Bz Clock Angle</h2>
+            <svg id="compass" viewBox="0 0 240 240" width="100%" height="240"></svg>
+        </div>
+
+        <div class="panel">
+            <h2>Plasma &amp; Field Readouts</h2>
+            <div class="readout-row"><span>Solar Wind Speed</span><span class="value" id="r-speed">-- km/s</span></div>
+            <div class="readout-row"><span>Proton Density</span><span class="value" id="r-density">-- p/cm³</span></div>
+            <div class="readout-row"><span>Ion Temperature</span><span class="value" id="r-temp">-- K</span></div>
+            <div class="readout-row"><span>Bx (GSM)</span><span class="value" id="r-bx">-- nT</span></div>
+            <div class="readout-row"><span>By (GSM)</span><span class="value" id="r-by">-- nT</span></div>
+            <div class="readout-row"><span>Bz (GSM)</span><span class="value" id="r-bz">-- nT</span></div>
+            <div class="readout-row"><span>|B| Total</span><span class="value" id="r-bt">-- nT</span></div>
+            <div class="readout-row"><span>Clock Angle θ</span><span class="value" id="r-theta">-- °</span></div>
+            <div class="readout-row"><span>Newell Coupling</span><span class="value" id="r-coupling">--</span></div>
+            <div class="readout-row"><span>dBz/dt (15m)</span><span class="value" id="r-dbzdt">-- nT/min</span></div>
+        </div>
+
+        <div class="panel">
+            <h2>Solar Wind Speed (km/s)</h2>
+            <div class="sparkline-value" id="spark-speed-value">--<span class="sparkline-unit">km/s</span></div>
+            <svg id="spark-speed" viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="panel">
+            <h2>Proton Density (p/cm³)</h2>
+            <div class="sparkline-value" id="spark-density-value">--<span class="sparkline-unit">p/cm³</span></div>
+            <svg id="spark-density" viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none"></svg>
+        </div>
+    </div>
+
+    <footer>NOAA SWPC DSCOVR L1 Real-Time Solar Wind &middot; Data refreshes every 60s</footer>
+
+    <script src="/static/js/compass.js"></script>
+    <script src="/static/js/sparkline.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
