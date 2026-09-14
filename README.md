@@ -27,10 +27,15 @@ NOAA SWPC ──▶ Ingestion (httpx/Pydantic) ──▶ Analytics (Polars physi
   every enriched frame to connected dashboards, with backlog replay for
   clients that connect mid-stream.
 - Dark, terminal-styled dashboard, responsive down to phone width: IMF
-  vector dial, live readouts, sparklines, and a storm-tier banner that
+  vector dial, live readouts, labeled time-series charts (gridlines + hover
+  crosshair/tooltip) for speed and density, and a storm-tier banner that
   escalates color with severity. Every readout has a tap/click-to-expand
   explanation (works on touch, not just hover), and a "How This Works"
   section at the bottom explains the physics with cited sources.
+- Optional storm alerting: fires a webhook whenever the live heuristic tier
+  changes (escalates or subsides), compatible with Slack/Mattermost/
+  Rocket.Chat and Discord incoming webhooks out of the box. Off by default;
+  never fires during the startup backfill replay.
 
 ## Prerequisites
 
@@ -93,6 +98,41 @@ them directly.
 | `HELIOSPHERE_REDIS_HISTORY_MINUTES` | `120` | Rolling window kept in Redis |
 | `HELIOSPHERE_CORS_ORIGINS` | `["*"]` | Allowed CORS origins |
 | `HELIOSPHERE_LOG_LEVEL` | `INFO` | Python logging level |
+| `HELIOSPHERE_ALERT_WEBHOOK_URL` | unset (alerting off) | Webhook to notify on storm tier changes — see [Storm Alerting](#storm-alerting) |
+
+## Storm Alerting
+
+Set `HELIOSPHERE_ALERT_WEBHOOK_URL` to get a notification whenever the live
+heuristic storm tier changes — escalates *or* subsides. Each request posts a
+JSON body with both a `text` field (Slack, Mattermost, Rocket.Chat) and a
+`content` field (Discord) carrying the same message, so it works with any of
+those out of the box with zero extra configuration:
+
+```bash
+export HELIOSPHERE_ALERT_WEBHOOK_URL="https://hooks.slack.com/services/T000/B000/XXXX"
+```
+
+The message includes the tier transition, Bz, dBz/dt, speed, and NOAA's
+official Kp/G-scale for context:
+
+```
+⚡ Heliosphere: live storm tier escalated — G1 (Minor) → G2 (Moderate)
+Bz -11.20 nT | dBz/dt -1.80 nT/min | speed 560 km/s
+NOAA official: G1 (Minor) (Kp 5.00)
+2026-09-14T14:02:00Z
+```
+
+Notes:
+- Off by default — no webhook, no requests, no failures possible.
+- Never fires during the startup backfill replay (only on genuine live
+  transitions), so restarting the app doesn't spam your channel with the
+  last 24h of historical tier changes.
+- A delivery failure is logged and swallowed, never crashes the poller.
+- For a service that needs a different payload shape (e.g. ntfy.sh, which
+  expects a plain-text body, or Home Assistant's webhook automations), adapt
+  [src/alerts.py](src/alerts.py) — it's a single, self-contained function.
+- Check whether it's currently active via `GET /api/v1/telemetry/status`
+  (`alerting_enabled`).
 
 ## Testing
 
@@ -100,9 +140,10 @@ them directly.
 pytest -v --cov=src --cov-report=term-missing
 ```
 
-63 tests, ~89% statement coverage. All tests are self-contained — NOAA calls
-are mocked with `respx`, Redis is faked with `fakeredis`, and DuckDB runs
-against a temp file — so the suite needs no network access or running infra.
+73 tests, ~89% statement coverage. All tests are self-contained — NOAA and
+webhook calls are mocked with `respx`, Redis is faked with `fakeredis`, and
+DuckDB runs against a temp file — so the suite needs no network access or
+running infra.
 
 What's covered: the physics functions (clock angle, coupling, storm
 classification, NOAA's official Kp→G-scale mapping) including boundary/edge
@@ -110,7 +151,9 @@ cases; the ingest→join→enrich pipeline, including the "active source"
 filtering and field-name-aliasing bugs that only showed up against NOAA's
 real (undocumented) response shape; startup backfill (`join_all`) and its
 interaction with the live incremental path; the official-Kp lookup and its
-resilience when the Kp feed fails independently of wind/mag; the
+resilience when the Kp feed fails independently of wind/mag; storm alert
+delivery and its escalate/subside wording, plus the guarantee that backfill
+never fires one despite replaying changing historical tiers; the
 rolling-window derivative math; DuckDB upsert/history-window semantics; the
 Redis rolling cache and trim behavior; the WebSocket connection manager
 (broadcast, dead-connection cleanup); and the REST route handlers.
@@ -151,6 +194,6 @@ docker run -p 8000:8000 \
 | --- | --- |
 | `GET /` | The dashboard |
 | `GET /api/v1/telemetry/history?hours=24` | Historical enriched telemetry from DuckDB |
-| `GET /api/v1/telemetry/status` | Latest snapshot + connected client count |
+| `GET /api/v1/telemetry/status` | Latest snapshot, connected client count, and whether alerting is enabled |
 | `GET /health` | Liveness check |
 | `WS /ws/live` | Streams each enriched frame as JSON on arrival; sends a `{"type": "backlog", "records": [...]}` frame on connect |

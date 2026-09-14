@@ -23,5 +23,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
     log_level: str = "INFO"
 
+    alert_webhook_url: str | None = None
+
 
 settings = Settings()

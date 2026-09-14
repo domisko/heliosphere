@@ -4,11 +4,13 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from src.alerts import notify_storm_tier_change
 from src.analytics.sliding_window import RollingWindow
 from src.api.routes import router
 from src.api.websocket import ConnectionManager
@@ -31,9 +33,13 @@ async def lifespan(app: FastAPI):
     app.state.duckdb_client = DuckDBClient(settings.duckdb_path)
     app.state.redis_client = RedisClient()
     app.state.connection_manager = ConnectionManager()
+    app.state.alert_client = httpx.AsyncClient()
 
     async def broadcast(record: EnrichedTelemetry) -> None:
         await app.state.connection_manager.broadcast(record.model_dump_json())
+
+    async def alert(previous_tier: str, record: EnrichedTelemetry) -> None:
+        await notify_storm_tier_change(app.state.alert_client, previous_tier, record)
 
     app.state.poller = Poller(
         client=app.state.noaa_client,
@@ -41,6 +47,7 @@ async def lifespan(app: FastAPI):
         duckdb_client=app.state.duckdb_client,
         redis_client=app.state.redis_client,
         on_update=broadcast,
+        on_alert=alert,
     )
 
     try:
@@ -60,6 +67,7 @@ async def lifespan(app: FastAPI):
         pass
     await app.state.noaa_client.aclose()
     await app.state.redis_client.aclose()
+    await app.state.alert_client.aclose()
     app.state.duckdb_client.close()
 
 

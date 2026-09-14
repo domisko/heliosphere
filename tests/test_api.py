@@ -57,3 +57,19 @@ def test_status_endpoint_reports_latest_and_connection_count():
     body = response.json()
     assert body["connected_clients"] == 3
     assert body["latest"]["speed"] == 500.0
+
+
+def test_status_endpoint_reports_alerting_disabled_by_default(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "alert_webhook_url", None)
+    client = TestClient(build_app())
+    assert client.get("/api/v1/telemetry/status").json()["alerting_enabled"] is False
+
+
+def test_status_endpoint_reports_alerting_enabled_when_webhook_configured(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "alert_webhook_url", "https://example.com/webhook")
+    client = TestClient(build_app())
+    assert client.get("/api/v1/telemetry/status").json()["alerting_enabled"] is True

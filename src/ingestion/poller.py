@@ -15,6 +15,7 @@ from src.storage.redis_client import RedisClient
 logger = logging.getLogger(__name__)
 
 UpdateCallback = Callable[[EnrichedTelemetry], Awaitable[None]]
+AlertCallback = Callable[[str, EnrichedTelemetry], Awaitable[None]]
 
 
 def _merge_fields(wind: RawWindRecord, mag: RawMagRecord) -> dict | None:
@@ -82,13 +83,16 @@ class Poller:
         duckdb_client: DuckDBClient,
         redis_client: RedisClient,
         on_update: UpdateCallback | None = None,
+        on_alert: AlertCallback | None = None,
     ) -> None:
         self._client = client
         self._window = window
         self._duckdb = duckdb_client
         self._redis = redis_client
         self._on_update = on_update
+        self._on_alert = on_alert
         self._last_timestamp: datetime | None = None
+        self._last_storm_tier: str | None = None
         self._kp_records: list[RawKpRecord] = []
 
     async def _refresh_kp(self) -> None:
@@ -154,6 +158,7 @@ class Poller:
             await self._duckdb.insert_record(record)
             await self._redis.push_latest(record)
             self._last_timestamp = timestamp
+            self._last_storm_tier = record.storm_tier  # prime state only; never alert on historical replay
             count += 1
         return count
 
@@ -172,12 +177,20 @@ class Poller:
 
         record = self._enrich(timestamp, fields)
 
+        if (
+            self._on_alert is not None
+            and self._last_storm_tier is not None
+            and record.storm_tier != self._last_storm_tier
+        ):
+            await self._on_alert(self._last_storm_tier, record)
+
         await self._duckdb.insert_record(record)
         await self._redis.push_latest(record)
         if self._on_update is not None:
             await self._on_update(record)
 
         self._last_timestamp = timestamp
+        self._last_storm_tier = record.storm_tier
         return record
 
     async def run_forever(self) -> None:

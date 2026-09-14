@@ -23,11 +23,11 @@ class FakeNOAAClient:
         return self._kp
 
 
-def make_poller(wind, mag, kp=None, on_update=None):
+def make_poller(wind, mag, kp=None, on_update=None, on_alert=None):
     client = FakeNOAAClient(wind, mag, kp)
     duckdb_client = AsyncMock()
     redis_client = AsyncMock()
-    poller = Poller(client, RollingWindow(), duckdb_client, redis_client, on_update=on_update)
+    poller = Poller(client, RollingWindow(), duckdb_client, redis_client, on_update=on_update, on_alert=on_alert)
     return poller, duckdb_client, redis_client
 
 
@@ -175,3 +175,69 @@ async def test_backfill_does_not_broadcast_to_live_clients():
     await poller.backfill()
 
     on_update.assert_not_awaited()
+
+
+async def test_no_alert_fires_on_the_first_ever_poll():
+    wind = [RawWindRecord(time_tag=T0, speed=400.0, density=5.0, temperature=1e5)]
+    mag = [RawMagRecord(time_tag=T0, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-10.0, bt=10.0)]  # -> G1 (Minor)
+    on_alert = AsyncMock()
+    poller, _, _ = make_poller(wind, mag, on_alert=on_alert)
+
+    await poller.poll_once()
+
+    on_alert.assert_not_awaited()
+
+
+async def test_no_alert_fires_when_the_storm_tier_is_unchanged():
+    wind = [RawWindRecord(time_tag=T0, speed=400.0, density=5.0, temperature=1e5)]
+    mag = [RawMagRecord(time_tag=T0, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-10.0, bt=10.0)]
+    on_alert = AsyncMock()
+    poller, _, _ = make_poller(wind, mag, on_alert=on_alert)
+    await poller.poll_once()
+
+    # Same tier again a minute later (-10 bz, 400 speed is G1 both times)
+    poller._client = FakeNOAAClient(
+        [RawWindRecord(time_tag=T1, speed=405.0, density=5.0, temperature=1e5)],
+        [RawMagRecord(time_tag=T1, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-10.0, bt=10.0)],
+    )
+    await poller.poll_once()
+
+    on_alert.assert_not_awaited()
+
+
+async def test_alert_fires_with_previous_and_new_tier_on_escalation():
+    wind = [RawWindRecord(time_tag=T0, speed=400.0, density=5.0, temperature=1e5)]
+    mag = [RawMagRecord(time_tag=T0, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-10.0, bt=10.0)]  # G1 (Minor)
+    on_alert = AsyncMock()
+    poller, _, _ = make_poller(wind, mag, on_alert=on_alert)
+    await poller.poll_once()
+
+    # Escalates to G2 (Moderate): bz<=-10 and speed>=500
+    poller._client = FakeNOAAClient(
+        [RawWindRecord(time_tag=T1, speed=550.0, density=5.0, temperature=1e5)],
+        [RawMagRecord(time_tag=T1, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-11.0, bt=11.0)],
+    )
+    second = await poller.poll_once()
+
+    on_alert.assert_awaited_once()
+    previous_tier, record = on_alert.await_args.args
+    assert previous_tier == "G1 (Minor)"
+    assert record is second
+    assert record.storm_tier == "G2 (Moderate)"
+
+
+async def test_backfill_never_fires_alerts_despite_changing_tiers():
+    wind = [
+        RawWindRecord(time_tag=T0, speed=400.0, density=5.0, temperature=1e5),  # G1
+        RawWindRecord(time_tag=T1, speed=550.0, density=5.0, temperature=1e5),  # G2
+    ]
+    mag = [
+        RawMagRecord(time_tag=T0, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-10.0, bt=10.0),
+        RawMagRecord(time_tag=T1, bx_gsm=1.0, by_gsm=0.0, bz_gsm=-11.0, bt=11.0),
+    ]
+    on_alert = AsyncMock()
+    poller, _, _ = make_poller(wind, mag, on_alert=on_alert)
+
+    await poller.backfill()
+
+    on_alert.assert_not_awaited()
