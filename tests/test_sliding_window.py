@@ -22,6 +22,12 @@ def test_derivative_is_zero_with_a_single_sample():
     assert window.push_and_get_derivative(T0, -5.0) == 0.0
 
 
+def test_derivative_is_zero_when_anchor_and_latest_share_a_timestamp():
+    window = RollingWindow()
+    window.push_and_get_derivative(T0, -5.0)
+    assert window.push_and_get_derivative(T0, -8.0) == 0.0
+
+
 def test_derivative_falls_back_to_oldest_sample_when_history_is_short():
     window = RollingWindow(window_minutes=25, lookback_minutes=15)
     window.push_and_get_derivative(T0, -5.0)

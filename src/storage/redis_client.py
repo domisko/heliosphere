@@ -12,8 +12,8 @@ LATEST_KEY = "heliosphere:telemetry:latest"
 
 
 class RedisClient:
-    def __init__(self, url: str | None = None) -> None:
-        self._redis = redis.from_url(url or settings.redis_url, decode_responses=True)
+    def __init__(self, url: str | None = None, client: redis.Redis | None = None) -> None:
+        self._redis = client or redis.from_url(url or settings.redis_url, decode_responses=True)
 
     async def push_latest(self, record: EnrichedTelemetry) -> None:
         payload = record.model_dump_json()

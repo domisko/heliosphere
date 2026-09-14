@@ -16,8 +16,3 @@ async def get_status(request: Request):
         "connected_clients": request.app.state.connection_manager.connection_count,
         "latest": latest,
     }
-
-
-@router.get("/health")
-async def health() -> dict:
-    return {"status": "ok"}

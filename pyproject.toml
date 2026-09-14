@@ -19,7 +19,9 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
     "respx>=0.21",
+    "fakeredis>=2.24",
 ]
 
 [tool.pytest.ini_options]

@@ -1,7 +1,7 @@
 """Persistent historical telemetry storage via DuckDB, backed by a local file."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import duckdb
@@ -63,7 +63,8 @@ class DuckDBClient:
         return await asyncio.to_thread(self._query_history_sync, hours)
 
     def _query_history_sync(self, hours: int) -> list[dict]:
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        # NOAA time_tags are naive UTC (no offset), so the cutoff must be naive too.
+        cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=hours)
         result = self._conn.execute(
             "SELECT * EXCLUDE (date) FROM telemetry WHERE timestamp >= ? ORDER BY timestamp",
             [cutoff],

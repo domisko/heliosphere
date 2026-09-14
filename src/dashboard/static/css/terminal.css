@@ -136,6 +136,7 @@ header h1 span {
 .readout-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 13px;
     padding: 4px 0;
     border-bottom: 1px dashed var(--border);
@@ -148,10 +149,66 @@ header h1 span {
 .readout-row .value {
     color: var(--cyan);
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .readout-row .value.negative {
     color: var(--crimson);
+}
+
+.info-btn {
+    background: none;
+    border: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    padding: 6px 4px;
+    margin: -6px -4px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.info-btn:hover,
+.info-btn:focus-visible {
+    color: var(--cyan);
+    outline: none;
+    background: rgba(34, 211, 238, 0.08);
+}
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+    border-radius: 50%;
+    border: 1px solid var(--slate);
+    color: var(--text-dim);
+    font-size: 10px;
+    vertical-align: middle;
+}
+
+.info-text {
+    margin: -2px 0 6px 0;
+    padding: 8px 10px;
+    background: #0d1420;
+    border-left: 2px solid var(--cyan);
+    border-radius: 2px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.panel-note {
+    margin: 8px 0 0 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.panel-note a {
+    color: var(--cyan);
 }
 
 svg text {
@@ -170,6 +227,60 @@ svg text {
     color: var(--text-dim);
     margin-left: 6px;
     font-weight: 400;
+}
+
+#explainer {
+    margin-top: 24px;
+}
+
+.explainer-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin: 0 0 16px 0;
+}
+
+#explainer .panel {
+    margin-bottom: 16px;
+}
+
+#explainer h3 {
+    font-size: 13px;
+    color: var(--cyan);
+    margin: 0 0 8px 0;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+#explainer p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    margin: 0 0 8px 0;
+}
+
+#explainer p:last-child {
+    margin-bottom: 0;
+}
+
+#explainer .source {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+#explainer .source a,
+#explainer p a {
+    color: var(--cyan);
+}
+
+#explainer code {
+    background: #0d1420;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
 }
 
 footer {

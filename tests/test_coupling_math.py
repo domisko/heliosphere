@@ -18,6 +18,11 @@ def test_clock_angle_purely_dawnward_is_90():
     assert calculate_clock_angle(by=10.0, bz=0.0) == pytest.approx(90.0)
 
 
+def test_clock_angle_purely_duskward_wraps_into_positive_range():
+    # atan2(-10, 0) is negative internally; the wrap-around must still land at 270 deg.
+    assert calculate_clock_angle(by=-10.0, bz=0.0) == pytest.approx(270.0)
+
+
 def test_coupling_is_maximal_for_purely_southward_field():
     v, bz = 500.0, -10.0
     coupling = calculate_coupling(v, by=0.0, bz=bz)
@@ -28,6 +33,15 @@ def test_coupling_is_maximal_for_purely_southward_field():
 def test_coupling_is_near_zero_for_purely_northward_field():
     coupling = calculate_coupling(500.0, by=0.0, bz=10.0)
     assert coupling == pytest.approx(0.0, abs=1e-9)
+
+
+def test_coupling_matches_hand_derivation_for_duskward_field():
+    # Exercises the theta-wrap branch: atan2(-8, 0) is negative before wrapping.
+    v, by, bz = 400.0, -8.0, 0.0
+    bt = math.sqrt(by**2 + bz**2)
+    theta = 3 * math.pi / 2  # atan2(-8, 0) wrapped into [0, 2pi)
+    expected = v ** (4 / 3) * bt ** (2 / 3) * math.sin(theta / 2) ** (8 / 3)
+    assert calculate_coupling(v, by, bz) == pytest.approx(expected)
 
 
 def test_coupling_matches_hand_derivation_for_dawnward_field():

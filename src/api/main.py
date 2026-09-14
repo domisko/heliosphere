@@ -74,6 +74,11 @@ async def dashboard() -> FileResponse:
     return FileResponse(DASHBOARD_DIR / "index.html")
 
 
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
 @app.websocket("/ws/live")
 async def ws_live(websocket: WebSocket) -> None:
     manager: ConnectionManager = websocket.app.state.connection_manager

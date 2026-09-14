@@ -34,6 +34,41 @@ async def test_fetch_wind_skips_malformed_and_null_rows():
     assert records[0].speed == 400.0
 
 
+async def test_fetch_raises_after_exhausting_all_retries(monkeypatch):
+    monkeypatch.setattr(settings, "max_retries", 2)
+    monkeypatch.setattr(settings, "retry_backoff_seconds", 0.01)
+
+    with respx.mock:
+        respx.get(settings.noaa_wind_url).mock(return_value=httpx.Response(503))
+        client = NOAAClient()
+        try:
+            with pytest.raises(RuntimeError, match="Exhausted retries"):
+                await client.fetch_wind()
+        finally:
+            await client.aclose()
+
+
+async def test_fetch_wind_and_mag_fetches_both_feeds_concurrently():
+    wind_payload = [
+        {"time_tag": "2026-01-01T00:00:00", "proton_speed": 400.0, "proton_density": 5.0, "proton_temperature": 1e5}
+    ]
+    mag_payload = [{"time_tag": "2026-01-01T00:00:00", "bx_gsm": 1.0, "by_gsm": 2.0, "bz_gsm": -3.0, "bt": 3.7}]
+
+    with respx.mock:
+        respx.get(settings.noaa_wind_url).mock(return_value=httpx.Response(200, json=wind_payload))
+        respx.get(settings.noaa_mag_url).mock(return_value=httpx.Response(200, json=mag_payload))
+        client = NOAAClient()
+        try:
+            wind, mag = await client.fetch_wind_and_mag()
+        finally:
+            await client.aclose()
+
+    assert len(wind) == 1
+    assert wind[0].speed == 400.0
+    assert len(mag) == 1
+    assert mag[0].bz_gsm == -3.0
+
+
 async def test_fetch_retries_then_succeeds_after_transient_failure():
     with respx.mock:
         route = respx.get(settings.noaa_mag_url)
@@ -74,3 +109,51 @@ def test_join_latest_returns_none_when_feeds_dont_overlap():
     mag = [RawMagRecord(time_tag=T1, bx_gsm=1.0, by_gsm=2.0, bz_gsm=-3.0, bt=3.5)]
 
     assert join_latest(wind, mag) is None
+
+
+def test_raw_wind_record_maps_noaas_actual_proton_field_names():
+    # NOAA's live rtsw_wind_1m feed uses proton_speed/proton_density/proton_temperature,
+    # not the bare speed/density/temperature names — this guards against that mismatch.
+    record = RawWindRecord.model_validate(
+        {
+            "time_tag": "2026-01-01T00:00:00",
+            "proton_speed": 450.5,
+            "proton_density": 6.1,
+            "proton_temperature": 90000.0,
+        }
+    )
+    assert record.speed == 450.5
+    assert record.density == 6.1
+    assert record.temperature == 90000.0
+
+
+async def test_fetch_wind_keeps_only_the_noaa_flagged_active_source():
+    # Each feed carries redundant rows per minute from multiple L1 spacecraft
+    # (ACE/IMAP/DSCOVR); only the row NOAA flags `active` is authoritative.
+    active = {
+        "time_tag": "2026-01-01T00:00:00",
+        "active": True,
+        "proton_speed": 400.0,
+        "proton_density": 5.0,
+        "proton_temperature": 1e5,
+    }
+    inactive_backup = {
+        "time_tag": "2026-01-01T00:00:00",
+        "active": False,
+        "proton_speed": 999.0,
+        "proton_density": 999.0,
+        "proton_temperature": 999.0,
+    }
+
+    with respx.mock:
+        respx.get(settings.noaa_wind_url).mock(
+            return_value=httpx.Response(200, json=[active, inactive_backup])
+        )
+        client = NOAAClient()
+        try:
+            records = await client.fetch_wind()
+        finally:
+            await client.aclose()
+
+    assert len(records) == 1
+    assert records[0].speed == 400.0
