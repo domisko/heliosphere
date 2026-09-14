@@ -47,13 +47,19 @@
         <div class="panel">
             <h2>Solar Wind Speed (km/s)</h2>
             <div class="sparkline-value" id="spark-speed-value">--<span class="sparkline-unit">km/s</span></div>
-            <svg id="spark-speed" viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none"></svg>
+            <div class="chart-wrap">
+                <svg id="spark-speed"></svg>
+                <div class="chart-tooltip" hidden></div>
+            </div>
         </div>
 
         <div class="panel">
             <h2>Proton Density (p/cm³)</h2>
             <div class="sparkline-value" id="spark-density-value">--<span class="sparkline-unit">p/cm³</span></div>
-            <svg id="spark-density" viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none"></svg>
+            <div class="chart-wrap">
+                <svg id="spark-density"></svg>
+                <div class="chart-tooltip" hidden></div>
+            </div>
         </div>
     </div>
 
@@ -99,7 +105,7 @@
 
     <script src="/static/js/glossary.js"></script>
     <script src="/static/js/compass.js"></script>
-    <script src="/static/js/sparkline.js"></script>
+    <script src="/static/js/chart.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

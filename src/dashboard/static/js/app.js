@@ -2,8 +2,12 @@
     const compassEl = document.getElementById("compass");
     Compass.init(compassEl);
 
-    const speedSpark = new Sparkline(document.getElementById("spark-speed"), { color: "#22d3ee" });
-    const densitySpark = new Sparkline(document.getElementById("spark-density"), { color: "#34d399" });
+    const speedChart = new TimeSeriesChart(document.getElementById("spark-speed").closest(".chart-wrap"), {
+        color: "var(--cyan)", unit: "km/s", maxPoints: 120, digits: 0,
+    });
+    const densityChart = new TimeSeriesChart(document.getElementById("spark-density").closest(".chart-wrap"), {
+        color: "var(--green)", unit: "p/cm³", maxPoints: 120, digits: 2,
+    });
 
     const dot = document.getElementById("conn-dot");
     const label = document.getElementById("conn-label");
@@ -62,12 +66,12 @@
             kpDetailEl.textContent = "Awaiting NOAA Kp data";
         }
 
-        const ts = new Date(record.timestamp);
+        const ts = parseUtcTimestamp(record.timestamp);
         document.getElementById("last-update").textContent = ts.toISOString().substring(11, 19) + "Z";
 
         Compass.update(compassEl, record.bx, record.by, record.bz);
-        speedSpark.push(record.speed);
-        densitySpark.push(record.density);
+        speedChart.push(record.timestamp, record.speed);
+        densityChart.push(record.timestamp, record.density);
     }
 
     async function seedFromHistory() {
@@ -75,8 +79,8 @@
             const response = await fetch("/api/v1/telemetry/history?hours=2");
             const data = await response.json();
             if (data.records && data.records.length) {
-                speedSpark.seed(data.records.map((r) => r.speed));
-                densitySpark.seed(data.records.map((r) => r.density));
+                speedChart.seed(data.records.map((r) => ({ t: r.timestamp, v: r.speed })));
+                densityChart.seed(data.records.map((r) => ({ t: r.timestamp, v: r.density })));
                 applyRecord(data.records[data.records.length - 1]);
             }
         } catch (err) {
@@ -100,8 +104,8 @@
             const payload = JSON.parse(event.data);
             if (payload.type === "backlog") {
                 if (payload.records && payload.records.length) {
-                    speedSpark.seed(payload.records.map((r) => r.speed));
-                    densitySpark.seed(payload.records.map((r) => r.density));
+                    speedChart.seed(payload.records.map((r) => ({ t: r.timestamp, v: r.speed })));
+                    densityChart.seed(payload.records.map((r) => ({ t: r.timestamp, v: r.density })));
                     applyRecord(payload.records[payload.records.length - 1]);
                 }
                 return;
