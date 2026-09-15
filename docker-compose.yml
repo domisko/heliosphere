@@ -1,8 +1,12 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # No `ports:` here on purpose: the heliosphere service reaches this
+    # container over the internal compose network at redis:6379, so nothing
+    # needs it published to the host. Redis has no auth configured, and a
+    # published port binds 0.0.0.0 by default - do NOT add one back unless
+    # you also bind it to localhost (e.g. "127.0.0.1:6379:6379") for a
+    # redis-cli debugging session.
     volumes:
       - redis-data:/data
 

@@ -96,9 +96,43 @@ them directly.
 | `HELIOSPHERE_DUCKDB_PATH` | `data/heliosphere.duckdb` | Path to the DuckDB file |
 | `HELIOSPHERE_REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
 | `HELIOSPHERE_REDIS_HISTORY_MINUTES` | `120` | Rolling window kept in Redis |
-| `HELIOSPHERE_CORS_ORIGINS` | `["*"]` | Allowed CORS origins |
+| `HELIOSPHERE_CORS_ORIGINS` | `[]` (same-origin only) | Cross-origin allowlist — see [Security & Exposure](#security--exposure) |
 | `HELIOSPHERE_LOG_LEVEL` | `INFO` | Python logging level |
 | `HELIOSPHERE_ALERT_WEBHOOK_URL` | unset (alerting off) | Webhook to notify on storm tier changes — see [Storm Alerting](#storm-alerting) |
+
+## Security & Exposure
+
+This app has **no built-in authentication**. Anyone who can reach the port
+can view the dashboard, read `/api/v1/telemetry/*`, and open `/ws/live` — the
+data itself is public NOAA space weather, so that's a low-stakes default,
+but it's worth being deliberate about, especially if you fork this for your
+own setup:
+
+- **CORS is locked down by default.** `HELIOSPHERE_CORS_ORIGINS` defaults to
+  `[]` — no cross-origin access at all. The bundled dashboard doesn't need
+  it (it's served same-origin by this same app), so the default costs
+  nothing. Only set it if you're building a *separate* frontend that calls
+  this API from another origin, e.g.
+  `HELIOSPHERE_CORS_ORIGINS='["https://your-frontend.example"]'` (JSON array
+  syntax, since it's a list). `'["*"]'` reopens it fully if you explicitly
+  want that.
+- **The WebSocket honors the same allowlist.** Starlette's CORS middleware
+  only inspects regular HTTP requests — it silently never runs for a
+  WebSocket upgrade. `/ws/live` re-checks the `Origin` header itself
+  ([src/api/websocket.py](src/api/websocket.py)`::is_origin_allowed`), so
+  setting `HELIOSPHERE_CORS_ORIGINS` restricts both consistently instead of
+  leaving the socket as a silent bypass.
+- **Docker Compose doesn't publish Redis to the host.** The `heliosphere`
+  service reaches it over the internal compose network; Redis itself has no
+  auth configured, so there's no reason to expose it. Don't add a `ports:`
+  entry back for it unless you bind it to localhost specifically for
+  debugging (`"127.0.0.1:6379:6379"`).
+- **If you're exposing this beyond your LAN** (a public demo link, a
+  port-forward, a public homelab domain), put a reverse proxy in front
+  (Caddy, Traefik, nginx) and add your own access control there — basic
+  auth, an OAuth2 proxy, or a private overlay network like Tailscale/
+  Cloudflare Tunnel are all standard homelab patterns for this. This app
+  intentionally doesn't attempt to build that itself.
 
 ## Storm Alerting
 
@@ -140,7 +174,7 @@ Notes:
 pytest -v --cov=src --cov-report=term-missing
 ```
 
-73 tests, ~89% statement coverage. All tests are self-contained — NOAA and
+82 tests, ~89% statement coverage. All tests are self-contained — NOAA and
 webhook calls are mocked with `respx`, Redis is faked with `fakeredis`, and
 DuckDB runs against a temp file — so the suite needs no network access or
 running infra.
@@ -156,7 +190,8 @@ delivery and its escalate/subside wording, plus the guarantee that backfill
 never fires one despite replaying changing historical tiers; the
 rolling-window derivative math; DuckDB upsert/history-window semantics; the
 Redis rolling cache and trim behavior; the WebSocket connection manager
-(broadcast, dead-connection cleanup); and the REST route handlers.
+(broadcast, dead-connection cleanup) and its Origin allowlist enforcement;
+and the REST route handlers.
 
 What's intentionally not unit-tested: the FastAPI `lifespan` wiring in
 [src/api/main.py](src/api/main.py) (it constructs real NOAA/DuckDB/Redis

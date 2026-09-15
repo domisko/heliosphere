@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from src.alerts import notify_storm_tier_change
 from src.analytics.sliding_window import RollingWindow
 from src.api.routes import router
-from src.api.websocket import ConnectionManager
+from src.api.websocket import ConnectionManager, is_origin_allowed
 from src.config import settings
 from src.ingestion.client import NOAAClient
 from src.ingestion.poller import Poller
@@ -94,8 +94,23 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+async def _reject_if_origin_disallowed(websocket: WebSocket) -> bool:
+    """Closes the socket and returns True if its Origin isn't allowed.
+
+    CORSMiddleware never runs for a WebSocket upgrade, so the HTTP CORS
+    policy has to be re-applied here explicitly - see is_origin_allowed().
+    """
+    if is_origin_allowed(websocket.headers.get("origin"), settings.cors_origins):
+        return False
+    await websocket.close(code=1008)  # Policy Violation
+    return True
+
+
 @app.websocket("/ws/live")
 async def ws_live(websocket: WebSocket) -> None:
+    if await _reject_if_origin_disallowed(websocket):
+        return
+
     manager: ConnectionManager = websocket.app.state.connection_manager
     redis_client: RedisClient = websocket.app.state.redis_client
 

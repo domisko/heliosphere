@@ -20,7 +20,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     redis_history_minutes: int = 120
 
-    cors_origins: list[str] = ["*"]
+    # Empty by default: the bundled dashboard is served same-origin, so it needs
+    # no cross-origin grant at all. Only set this if you're calling the API from
+    # a *different* origin (a separate frontend, another domain). "*" is
+    # supported for an explicit fully-open choice, but isn't the default: this
+    # app has no auth, so an open-source fork left at a permissive default is
+    # an easy way to unknowingly expose a public NOAA-data API to any website.
+    cors_origins: list[str] = []
     log_level: str = "INFO"
 
     alert_webhook_url: str | None = None

@@ -7,6 +7,24 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 
+def is_origin_allowed(origin: str | None, allowed: list[str]) -> bool:
+    """Whether a WebSocket handshake's Origin header should be accepted.
+
+    Starlette's CORSMiddleware only inspects regular HTTP requests; it never
+    runs for a WebSocket upgrade, so /ws/live would otherwise ignore
+    HELIOSPHERE_CORS_ORIGINS entirely. An empty `allowed` list (the default)
+    means no explicit restriction has been configured, so every origin is let
+    through - same as a same-origin dashboard needs, and how this behaved
+    before CORS was tightened. Once `allowed` is non-empty, it's enforced here
+    exactly like the HTTP CORS policy is enforced by the middleware.
+    """
+    if not allowed:
+        return True
+    if "*" in allowed:
+        return True
+    return origin in allowed
+
+
 class ConnectionManager:
     def __init__(self) -> None:
         self._connections: set[WebSocket] = set()

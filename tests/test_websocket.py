@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock
 
-from src.api.websocket import ConnectionManager
+import pytest
+
+from src.api.websocket import ConnectionManager, is_origin_allowed
 
 
 async def test_broadcasts_to_all_connected_clients():
@@ -37,3 +39,18 @@ async def test_disconnect_removes_the_client():
     manager.disconnect(ws)
 
     assert manager.connection_count == 0
+
+
+@pytest.mark.parametrize(
+    "origin,allowed,expected",
+    [
+        (None, [], True),  # default: no restriction configured, same-origin app keeps working
+        ("https://evil.example", [], True),  # still true: an empty list means "not configured", not "deny all"
+        ("https://app.example", ["https://app.example"], True),
+        ("https://evil.example", ["https://app.example"], False),
+        (None, ["https://app.example"], False),  # a browser cross-origin request always sends Origin
+        ("https://anything.example", ["*"], True),  # explicit opt-in to fully open
+    ],
+)
+def test_is_origin_allowed(origin, allowed, expected):
+    assert is_origin_allowed(origin, allowed) is expected
