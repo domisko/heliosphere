@@ -51,6 +51,25 @@ header h1 span {
     color: var(--text-dim);
 }
 
+#header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.github-link {
+    display: inline-flex;
+    color: var(--text-dim);
+    line-height: 0;
+    transition: color 0.2s ease;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+    color: var(--cyan);
+    outline: none;
+}
+
 #conn-status {
     display: flex;
     align-items: center;
