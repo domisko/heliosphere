@@ -41,6 +41,30 @@ async def test_disconnect_removes_the_client():
     assert manager.connection_count == 0
 
 
+async def test_connect_accepts_and_returns_true_when_under_capacity():
+    manager = ConnectionManager(max_connections=2)
+    ws = AsyncMock()
+
+    accepted = await manager.connect(ws)
+
+    assert accepted is True
+    ws.accept.assert_awaited_once()
+    assert manager.connection_count == 1
+
+
+async def test_connect_rejects_and_returns_false_when_at_capacity():
+    manager = ConnectionManager(max_connections=1)
+    ws1, ws2 = AsyncMock(), AsyncMock()
+    await manager.connect(ws1)
+
+    accepted = await manager.connect(ws2)
+
+    assert accepted is False
+    ws2.accept.assert_not_awaited()
+    ws2.close.assert_awaited_once_with(code=1013)
+    assert manager.connection_count == 1
+
+
 @pytest.mark.parametrize(
     "origin,allowed,expected",
     [

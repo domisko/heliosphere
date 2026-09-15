@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.alerts import notify_storm_tier_change
 from src.analytics.sliding_window import RollingWindow
+from src.api.rate_limit import RateLimitMiddleware
 from src.api.routes import router
 from src.api.websocket import ConnectionManager, is_origin_allowed
 from src.config import settings
@@ -32,7 +33,7 @@ async def lifespan(app: FastAPI):
     app.state.noaa_client = NOAAClient()
     app.state.duckdb_client = DuckDBClient(settings.duckdb_path)
     app.state.redis_client = RedisClient()
-    app.state.connection_manager = ConnectionManager()
+    app.state.connection_manager = ConnectionManager(max_connections=settings.ws_max_connections)
     app.state.alert_client = httpx.AsyncClient()
 
     async def broadcast(record: EnrichedTelemetry) -> None:
@@ -72,6 +73,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Heliosphere Mission Control", lifespan=lifespan)
+
+# Registered before CORSMiddleware so CORS ends up as the outer layer and
+# still adds its headers to a 429 response - middleware added later wraps
+# around middleware added earlier in Starlette/FastAPI.
+app.add_middleware(
+    RateLimitMiddleware,
+    requests=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window_seconds,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -114,7 +124,8 @@ async def ws_live(websocket: WebSocket) -> None:
     manager: ConnectionManager = websocket.app.state.connection_manager
     redis_client: RedisClient = websocket.app.state.redis_client
 
-    await manager.connect(websocket)
+    if not await manager.connect(websocket):
+        return
     try:
         backlog = await redis_client.get_recent(minutes=30)
         if backlog:

@@ -26,12 +26,21 @@ def is_origin_allowed(origin: str | None, allowed: list[str]) -> bool:
 
 
 class ConnectionManager:
-    def __init__(self) -> None:
+    def __init__(self, max_connections: int = 100) -> None:
         self._connections: set[WebSocket] = set()
+        self._max_connections = max_connections
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket) -> bool:
+        """Accepts the connection and returns True, unless already at
+        capacity, in which case it's closed unaccepted and this returns
+        False - an unbounded number of open sockets would otherwise let a
+        single client exhaust server memory."""
+        if len(self._connections) >= self._max_connections:
+            await websocket.close(code=1013)  # Try Again Later
+            return False
         await websocket.accept()
         self._connections.add(websocket)
+        return True
 
     def disconnect(self, websocket: WebSocket) -> None:
         self._connections.discard(websocket)

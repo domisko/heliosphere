@@ -31,5 +31,23 @@ class Settings(BaseSettings):
 
     alert_webhook_url: str | None = None
 
+    # Per-IP fixed-window limit on the REST API (does not apply to WebSocket
+    # handshakes, which use ws_max_connections instead). Generous enough for
+    # a real visitor's page load + occasional history fetch; tight enough to
+    # blunt a simple hammering loop.
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: float = 60.0
+
+    # Hard cap on simultaneous /ws/live connections, so an unbounded number
+    # of open sockets can't exhaust memory.
+    ws_max_connections: int = 100
+
+    # Off by default: only enable this when the app sits behind a reverse
+    # proxy/CDN you control (Caddy, nginx, Cloudflare Tunnel, ...) that
+    # overwrites X-Forwarded-For with the real client IP. If the app is
+    # directly reachable on its own port, enabling this lets any client
+    # spoof that header and bypass its own rate limit entirely.
+    trust_proxy_headers: bool = False
+
 
 settings = Settings()

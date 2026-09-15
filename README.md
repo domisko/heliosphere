@@ -99,6 +99,10 @@ them directly.
 | `HELIOSPHERE_CORS_ORIGINS` | `[]` (same-origin only) | Cross-origin allowlist — see [Security & Exposure](#security--exposure) |
 | `HELIOSPHERE_LOG_LEVEL` | `INFO` | Python logging level |
 | `HELIOSPHERE_ALERT_WEBHOOK_URL` | unset (alerting off) | Webhook to notify on storm tier changes — see [Storm Alerting](#storm-alerting) |
+| `HELIOSPHERE_RATE_LIMIT_REQUESTS` | `60` | Max REST requests per IP per window |
+| `HELIOSPHERE_RATE_LIMIT_WINDOW_SECONDS` | `60.0` | Rate limit window length |
+| `HELIOSPHERE_WS_MAX_CONNECTIONS` | `100` | Max simultaneous `/ws/live` connections |
+| `HELIOSPHERE_TRUST_PROXY_HEADERS` | `false` | Read the real client IP from `X-Forwarded-For` — only enable behind a reverse proxy, see below |
 
 ## Security & Exposure
 
@@ -127,12 +131,56 @@ own setup:
   auth configured, so there's no reason to expose it. Don't add a `ports:`
   entry back for it unless you bind it to localhost specifically for
   debugging (`"127.0.0.1:6379:6379"`).
-- **If you're exposing this beyond your LAN** (a public demo link, a
-  port-forward, a public homelab domain), put a reverse proxy in front
-  (Caddy, Traefik, nginx) and add your own access control there — basic
-  auth, an OAuth2 proxy, or a private overlay network like Tailscale/
-  Cloudflare Tunnel are all standard homelab patterns for this. This app
-  intentionally doesn't attempt to build that itself.
+- **The REST API is rate-limited per IP** (`HELIOSPHERE_RATE_LIMIT_REQUESTS`
+  per `HELIOSPHERE_RATE_LIMIT_WINDOW_SECONDS`, default 60/60s) and
+  **`/ws/live` has a hard cap on simultaneous connections**
+  (`HELIOSPHERE_WS_MAX_CONNECTIONS`, default 100). Neither protects against a
+  determined distributed attacker — there's no auth here to make that worth
+  it — but both stop a single careless script or crawler from quietly
+  consuming your homelab's CPU/memory. State is in-memory and per-instance,
+  which is fine for a single-container deployment.
+- **If you're exposing this beyond your LAN**, whether that's a quick
+  personal check-in or a public link you're sending to other people (a demo
+  link, a portfolio piece), put a reverse proxy in front (Caddy, Traefik,
+  nginx). See **Deploying behind a reverse proxy** below for the one setting
+  that actually matters once you do. Add your own access control there too
+  (basic auth, an OAuth2 proxy) if the goal is "only people I invite" rather
+  than "public, resolvable by anyone with the link" — this app intentionally
+  doesn't build that in itself.
+
+### Deploying behind a reverse proxy
+
+The common homelab pattern — Caddy/Traefik/nginx terminating TLS on a
+subdomain, proxying to this app's internal port — needs exactly one setting
+on this side: **`HELIOSPHERE_TRUST_PROXY_HEADERS=true`**. Without it, every
+request looks like it comes from your proxy's own IP, so the whole internet
+would share one rate-limit budget instead of getting one each.
+
+```bash
+export HELIOSPHERE_TRUST_PROXY_HEADERS=true
+```
+
+Two things to get right alongside it:
+
+1. **Your proxy needs to actually set `X-Forwarded-For`.** Caddy and Traefik
+   do this automatically; a bare nginx `proxy_pass` needs
+   `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` in the
+   `location` block.
+2. **The app's own port must not be reachable except through the proxy.**
+   If it is, anyone can bypass both the proxy and the rate limiter by
+   connecting directly and setting `X-Forwarded-For` to whatever they want —
+   trusting that header is only safe when it's the proxy setting it, not the
+   client. In Docker Compose, that means not publishing the `heliosphere`
+   service's port to `0.0.0.0`; either run the proxy as another service on
+   the same compose network and point it at `heliosphere:8000` directly
+   (nothing published to the host at all), or if the proxy runs outside
+   Compose on the same machine, publish to `127.0.0.1:8000:8000` rather than
+   the bare `8000:8000` in [docker-compose.yml](docker-compose.yml).
+
+CORS needs no changes for this setup: the dashboard's own JS calls the API
+from the same subdomain the proxy serves it on, so it's still same-origin
+from the browser's point of view — `HELIOSPHERE_CORS_ORIGINS` only matters if
+you build a *separate* frontend on a different origin.
 
 ## Storm Alerting
 
@@ -174,7 +222,7 @@ Notes:
 pytest -v --cov=src --cov-report=term-missing
 ```
 
-82 tests, ~89% statement coverage. All tests are self-contained — NOAA and
+89 tests, ~90% statement coverage. All tests are self-contained — NOAA and
 webhook calls are mocked with `respx`, Redis is faked with `fakeredis`, and
 DuckDB runs against a temp file — so the suite needs no network access or
 running infra.
@@ -190,8 +238,9 @@ delivery and its escalate/subside wording, plus the guarantee that backfill
 never fires one despite replaying changing historical tiers; the
 rolling-window derivative math; DuckDB upsert/history-window semantics; the
 Redis rolling cache and trim behavior; the WebSocket connection manager
-(broadcast, dead-connection cleanup) and its Origin allowlist enforcement;
-and the REST route handlers.
+(broadcast, dead-connection cleanup, its Origin allowlist, and its
+connection cap); the REST rate limiter (per-IP windowing, reset, and both
+trust/no-trust proxy-header code paths); and the REST route handlers.
 
 What's intentionally not unit-tested: the FastAPI `lifespan` wiring in
 [src/api/main.py](src/api/main.py) (it constructs real NOAA/DuckDB/Redis
