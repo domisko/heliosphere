@@ -253,6 +253,24 @@ svg text {
     font-weight: 400;
 }
 
+/* CSS Grid stretches every panel in a row to match the tallest one (the
+   readouts panel usually towers over these), which otherwise leaves the
+   fixed-height chart pinned at the top with dead space below it. Centering
+   the value+chart group in the extra space reads far better than trying to
+   stretch the chart to fill it, which would non-uniformly scale the SVG and
+   visibly distort its axis label text. */
+.panel--chart {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel--chart .chart-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .chart-wrap {
     position: relative;
 }
@@ -280,6 +298,14 @@ svg text {
     flex-direction: column;
     align-items: center;
     z-index: 5;
+}
+
+/* Author rules always beat the UA default `[hidden] { display: none }`
+   regardless of selector specificity, so setting `display: flex` above
+   silently defeats `.hidden = true` unless it's re-asserted here. Without
+   this, the tooltip renders permanently from the first hover onward. */
+.chart-tooltip[hidden] {
+    display: none;
 }
 
 .chart-tooltip strong {
