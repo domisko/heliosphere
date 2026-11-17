@@ -76,15 +76,24 @@
 
     async function seedFromHistory() {
         try {
-            const response = await fetch("/api/v1/telemetry/history?hours=2");
+            let response = await fetch("/api/v1/telemetry/history?hours=2");
+            let isDemo = false;
+            if (!response.ok) {
+                response = await fetch("/static/data/history.json");
+                isDemo = response.ok;
+            }
+            if (!response.ok) return false;
             const data = await response.json();
             if (data.records && data.records.length) {
                 speedChart.seed(data.records.map((r) => ({ t: r.timestamp, v: r.speed })));
                 densityChart.seed(data.records.map((r) => ({ t: r.timestamp, v: r.density })));
                 applyRecord(data.records[data.records.length - 1]);
+                if (isDemo) setConnected(true);
             }
+            return isDemo;
         } catch (err) {
             console.warn("Could not seed history", err);
+            return false;
         }
     }
 
@@ -122,6 +131,7 @@
         ws.onerror = () => ws.close();
     }
 
-    seedFromHistory();
-    connect();
+    seedFromHistory().then((isDemo) => {
+        if (!isDemo) connect();
+    });
 })();

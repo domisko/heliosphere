@@ -1,0 +1,397 @@
+:root {
+    --bg: #0b0f19;
+    --panel: #111827;
+    --border: #1f2937;
+    --slate: #64748b;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --cyan: #22d3ee;
+    --amber: #f59e0b;
+    --crimson: #ef4444;
+    --green: #34d399;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+
+body {
+    min-height: 100vh;
+    padding: 16px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+header h1 {
+    font-size: 16px;
+    letter-spacing: 0.15em;
+    margin: 0;
+    color: var(--cyan);
+    text-transform: uppercase;
+}
+
+header h1 span {
+    color: var(--text-dim);
+}
+
+#header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.github-link {
+    display: inline-flex;
+    color: var(--text-dim);
+    line-height: 0;
+    transition: color 0.2s ease;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+    color: var(--cyan);
+    outline: none;
+}
+
+#conn-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--crimson);
+    box-shadow: 0 0 8px var(--crimson);
+}
+
+.dot.live {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+}
+
+#storm-banner {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    transition: background 0.4s ease, border-color 0.4s ease;
+}
+
+#storm-banner .tier {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+#official-kp-block .tier {
+    font-size: 16px;
+    color: var(--text);
+}
+
+#storm-banner .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+#official-kp-block .label .info-btn {
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 0 2px;
+    font-size: 11px;
+}
+
+.kp-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+#kp-info-text {
+    margin: 0 0 16px 0;
+}
+
+#storm-banner.g0 { border-color: var(--border); }
+#storm-banner.g0 .tier { color: var(--green); }
+#storm-banner.g1 { border-color: var(--amber); }
+#storm-banner.g1 .tier { color: var(--amber); }
+#storm-banner.g2, #storm-banner.g3, #storm-banner.g4-g5 {
+    border-color: var(--crimson);
+    background: #1a0f0f;
+}
+#storm-banner.g2 .tier, #storm-banner.g3 .tier, #storm-banner.g4-g5 .tier {
+    color: var(--crimson);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.panel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--panel);
+    padding: 16px;
+}
+
+.panel h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin: 0 0 12px 0;
+    font-weight: 500;
+}
+
+.readout-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+}
+
+.readout-row:last-child {
+    border-bottom: none;
+}
+
+.readout-row .value {
+    color: var(--cyan);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.readout-row .value.negative {
+    color: var(--crimson);
+}
+
+.info-btn {
+    background: none;
+    border: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    padding: 6px 4px;
+    margin: -6px -4px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.info-btn:hover,
+.info-btn:focus-visible {
+    color: var(--cyan);
+    outline: none;
+    background: rgba(34, 211, 238, 0.08);
+}
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+    border-radius: 50%;
+    border: 1px solid var(--slate);
+    color: var(--text-dim);
+    font-size: 10px;
+    vertical-align: middle;
+}
+
+.info-text {
+    margin: -2px 0 6px 0;
+    padding: 8px 10px;
+    background: #0d1420;
+    border-left: 2px solid var(--cyan);
+    border-radius: 2px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.panel-note {
+    margin: 8px 0 0 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.panel-note a {
+    color: var(--cyan);
+}
+
+svg text {
+    font-family: inherit;
+}
+
+.sparkline-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-bottom: 4px;
+}
+
+.sparkline-unit {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 6px;
+    font-weight: 400;
+}
+
+/* CSS Grid stretches every panel in a row to match the tallest one (the
+   readouts panel usually towers over these), which otherwise leaves the
+   fixed-height chart pinned at the top with dead space below it. Centering
+   the value+chart group in the extra space reads far better than trying to
+   stretch the chart to fill it, which would non-uniformly scale the SVG and
+   visibly distort its axis label text. */
+.panel--chart {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel--chart .chart-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.chart-wrap {
+    position: relative;
+}
+
+.chart-wrap svg {
+    width: 100%;
+    height: 110px;
+    display: block;
+    touch-action: pan-y;
+    cursor: crosshair;
+}
+
+.chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(-50%, -100%) translateY(-8px);
+    background: #0d1420;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5;
+}
+
+/* Author rules always beat the UA default `[hidden] { display: none }`
+   regardless of selector specificity, so setting `display: flex` above
+   silently defeats `.hidden = true` unless it's re-asserted here. Without
+   this, the tooltip renders permanently from the first hover onward. */
+.chart-tooltip[hidden] {
+    display: none;
+}
+
+.chart-tooltip strong {
+    font-size: 13px;
+}
+
+.chart-tooltip span {
+    color: var(--text-dim);
+}
+
+#explainer {
+    margin-top: 24px;
+}
+
+.explainer-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin: 0 0 16px 0;
+}
+
+#explainer .panel {
+    margin-bottom: 16px;
+}
+
+#explainer h3 {
+    font-size: 13px;
+    color: var(--cyan);
+    margin: 0 0 8px 0;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+#explainer p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    margin: 0 0 8px 0;
+}
+
+#explainer p:last-child {
+    margin-bottom: 0;
+}
+
+#explainer .source {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+#explainer .source a,
+#explainer p a {
+    color: var(--cyan);
+}
+
+#explainer code {
+    background: #0d1420;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+footer {
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--slate);
+    text-align: center;
+}

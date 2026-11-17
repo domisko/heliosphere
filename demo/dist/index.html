@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heliosphere Mission Control</title>
+    <link rel="stylesheet" href="/static/css/terminal.css" />
+</head>
+<body>
+    <header>
+        <h1>Heliosphere <span>// Mission Control</span></h1>
+        <div id="header-right">
+            <a href="https://github.com/domisko/heliosphere" target="_blank" rel="noopener" class="github-link" aria-label="View source on GitHub" title="View source on GitHub">
+                <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+            </a>
+            <div id="conn-status">
+                <span class="dot" id="conn-dot"></span>
+                <span id="conn-label">Connecting</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="storm-banner" class="g0">
+        <div>
+            <div class="label">Live Estimate (Heuristic)</div>
+            <div class="tier" id="storm-tier">G0 (Nominal)</div>
+        </div>
+        <div id="official-kp-block">
+            <div class="label">NOAA Official (Kp Index) <button type="button" class="info-btn" id="kp-info-btn" aria-expanded="false" title="NOAA's authoritative G-scale, from ground magnetometers, updated every 3 hours.">?</button></div>
+            <div class="tier" id="official-tier">--</div>
+            <div class="kp-detail" id="kp-detail">Kp -- (updated ~3-hourly)</div>
+        </div>
+        <div style="text-align:right">
+            <div class="label">Last Update (UTC)</div>
+            <div id="last-update" class="tier" style="font-size:14px">--:--:--</div>
+        </div>
+    </div>
+    <p class="info-text" id="kp-info-text" hidden>NOAA's official G-scale, computed from the planetary Kp index (a 3-hourly measurement from a global ground-magnetometer network). It's authoritative but lags the live heuristic on the left, which reacts to solar wind data within a minute. See <a href="#explainer-storm-tier">Storm Tier</a> below.</p>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>IMF Vector — By / Bz Clock Angle</h2>
+            <svg id="compass" viewBox="0 0 240 240" width="100%" height="240"></svg>
+            <p class="panel-note">Vector direction is the clock angle θ; red means Bz is southward (reconnection-favorable). See <a href="#explainer-clock-angle">Clock Angle &amp; Southward Bz</a> below.</p>
+        </div>
+
+        <div class="panel">
+            <h2>Plasma &amp; Field Readouts</h2>
+            <div id="readouts"></div>
+        </div>
+
+        <div class="panel panel--chart">
+            <h2>Solar Wind Speed (km/s)</h2>
+            <div class="chart-body">
+                <div class="sparkline-value" id="spark-speed-value">--<span class="sparkline-unit">km/s</span></div>
+                <div class="chart-wrap">
+                    <svg id="spark-speed"></svg>
+                    <div class="chart-tooltip" hidden></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel panel--chart">
+            <h2>Proton Density (p/cm³)</h2>
+            <div class="chart-body">
+                <div class="sparkline-value" id="spark-density-value">--<span class="sparkline-unit">p/cm³</span></div>
+                <div class="chart-wrap">
+                    <svg id="spark-density"></svg>
+                    <div class="chart-tooltip" hidden></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="explainer">
+        <h2 class="explainer-title">How This Works</h2>
+
+        <div class="panel">
+            <h3>The Data Source</h3>
+            <p>NOAA's Space Weather Prediction Center streams minute-by-minute measurements from spacecraft parked at the L1 Lagrange point, ~1.5 million km sunward of Earth — currently ACE and DSCOVR, with SOLAR-1 and IMAP joining as replacements. Several satellites can report for the same minute; NOAA flags exactly one reading <code>active</code>, and Heliosphere only ingests that flagged row, skipping minutes where none is available.</p>
+            <p class="source">Source: <a href="https://www.swpc.noaa.gov/products/real-time-solar-wind" target="_blank" rel="noopener">NOAA SWPC — Real-Time Solar Wind</a></p>
+        </div>
+
+        <div class="panel">
+            <h3>GSM Coordinates — What Bx, By, Bz Mean</h3>
+            <p>The magnetic field is reported in Geocentric Solar Magnetospheric (GSM) coordinates: <strong>Bx</strong> points along the Earth–Sun line, <strong>Bz</strong> is aligned with Earth's magnetic dipole (positive = north), and <strong>By</strong> completes the right-handed set (roughly dawn–dusk). <strong>Bt</strong> is the total field magnitude, √(Bx²+By²+Bz²). This layout is chosen specifically because it puts Earth's dipole field in one plane, which is what makes southward Bz easy to read off directly.</p>
+            <p class="source">Source: <a href="https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml" target="_blank" rel="noopener">NASA SPDF — Coordinate Systems (Appendix C)</a></p>
+        </div>
+
+        <div class="panel" id="explainer-clock-angle">
+            <h3>Clock Angle &amp; Southward Bz</h3>
+            <p>The clock angle θ = atan2(By, Bz) measures where the field points in the Y-Z plane: 0° is due north (Bz fully positive), 180° is due south (Bz fully negative). A southward-pointing field partially cancels Earth's own northward field at the dayside magnetopause, allowing magnetic reconnection to open a path for solar wind plasma to enter the magnetosphere. That's why sustained negative Bz — not speed or density alone — is the primary driver of geomagnetic storms.</p>
+        </div>
+
+        <div class="panel">
+            <h3>Newell Coupling Function</h3>
+            <p>Coupling = v<sup>4/3</sup> · B<sub>t</sub><sup>2/3</sup> · sin<sup>8/3</sup>(θ/2), where v is solar wind speed and B<sub>t</sub> is the transverse (By–Bz) field. It was empirically fit across ten independent measures of magnetospheric activity (Dst, Kp, auroral power, and others) and correlates better with observed geomagnetic activity than most competing formulas. The output is a relative index, not a physical unit — read it as "how hard the solar wind is currently driving the magnetosphere," not a literal flux measurement.</p>
+            <p class="source">Source: Newell et al. (2007), <a href="https://doi.org/10.1029/2006JA012015" target="_blank" rel="noopener">"A nearly universal solar wind-magnetosphere coupling function," JGR Space Physics</a></p>
+        </div>
+
+        <div class="panel">
+            <h3>dBz/dt — Storm Onset Warning</h3>
+            <p>This tracks how fast Bz has moved over the trailing 15 minutes. A sharp negative swing (Bz dropping quickly) often precedes the rapid "main phase" onset of a storm, ahead of what the instantaneous Bz value alone would suggest — it's an early-warning signal, not a severity measure.</p>
+        </div>
+
+        <div class="panel" id="explainer-storm-tier">
+            <h3>Storm Tier — Live Heuristic vs. NOAA's Official G-Scale</h3>
+            <p>The banner at the top shows both, side by side, pulled from NOAA's own feeds in real time. <strong>NOAA Official</strong> is the authoritative G-scale, derived from the <strong>Kp index</strong> — a 3-hourly measurement computed from a global network of ground magnetometers — so it only updates a few times a day. <strong>Live Estimate</strong> is a <em>solar-wind-driven heuristic</em>: it approximates likely severity every minute from Bz, speed, and the Newell coupling index, using the same physics that eventually shows up in Kp. When they disagree, trust NOAA Official; the heuristic exists to give you a same-minute early read while you wait for it.</p>
+            <p class="source">Source: <a href="https://www.swpc.noaa.gov/noaa-scales-explanation" target="_blank" rel="noopener">NOAA — Space Weather Scales</a> (G1=Kp5 … G5=Kp9)</p>
+        </div>
+    </section>
+
+    <footer>NOAA SWPC Real-Time Solar Wind (ACE / DSCOVR / SOLAR-1 / IMAP) + Planetary K-Index &middot; Data refreshes every 60s</footer>
+
+    <script src="/static/js/glossary.js"></script>
+    <script src="/static/js/compass.js"></script>
+    <script src="/static/js/chart.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
